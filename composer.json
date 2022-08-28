@@ -1,0 +1,19 @@
+{
+  "name": "josepratolopez/mercantil-ve",
+  "description": "Implementacion de APIs de pago web con tarjetas nacionales e internacionales del Banco Mercantil de Venezuela",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Jose Prato Lopez",
+      "email": "ing.joseprato@gmail.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "require": {},
+  "autoload": {
+    "psr-4": {
+      "Mercantil\\": "src/Mercantil/"
+    }
+  }
+}
