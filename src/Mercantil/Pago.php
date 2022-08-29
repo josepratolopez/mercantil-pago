@@ -177,7 +177,7 @@ class Pago extends AesCipher {
 			if (isset($response['error_list'])) {
 				$this->setIsApproved(false);
 				$this->setTransactionReferenceId(null);
-				return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => json_encode($data)));
+				return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => $data));
 			}
 			if ($response['transaction_response']['trx_status'] == 'approved') {
 				$this->setIsApproved(true);
@@ -230,7 +230,7 @@ class Pago extends AesCipher {
 				if (isset($response['error_list'])) {
 					$this->setIsApproved(false);
 					$this->setTransactionReferenceId(null);
-					return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => json_encode($data)));
+					return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => $data));
 				}
 				if ($response['transaction_response']['trx_status'] == 'approved') {
 					$this->setIsApproved(true);
