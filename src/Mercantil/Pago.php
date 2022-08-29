@@ -177,7 +177,7 @@ class Pago extends AesCipher {
 			if (isset($response['error_list'])) {
 				$this->setIsApproved(false);
 				$this->setTransactionReferenceId(null);
-				return array("ResponseError" => $response['error_list'], "DataSent" => json_encode($data));
+				return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => json_encode($data)));
 			}
 			if ($response['transaction_response']['trx_status'] == 'approved') {
 				$this->setIsApproved(true);
@@ -186,8 +186,7 @@ class Pago extends AesCipher {
 				$this->setIsApproved(false);
 				$this->setTransactionReferenceId(null);
 			}
-			return json_encode($response);
-
+			return json_encode(array("Response"=>$response,"DataSent" => $data));
 			break;
 
 		case 'tdd':
@@ -231,7 +230,7 @@ class Pago extends AesCipher {
 				if (isset($response['error_list'])) {
 					$this->setIsApproved(false);
 					$this->setTransactionReferenceId(null);
-					return array("ResponseError" => $response['error_list'], "DataSent" => json_encode($data));
+					return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => json_encode($data)));
 				}
 				if ($response['transaction_response']['trx_status'] == 'approved') {
 					$this->setIsApproved(true);
@@ -240,7 +239,7 @@ class Pago extends AesCipher {
 					$this->setIsApproved(false);
 					$this->setTransactionReferenceId(null);
 				}
-				return json_encode($response);
+				return json_encode(array("Response"=>$response,"DataSent" => $data));
 			} else {
 				$this->setIsApproved(false);
 				$this->setTransactionReferenceId(null);
