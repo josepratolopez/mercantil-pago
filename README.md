@@ -39,6 +39,8 @@ Ejemplo:
 ```
 $response = $mercantil->payment("4141-4141-4141-4141", "12/2024", "369", "tdc", "V12345678", "192.168.1.1", "Chrome", "65987412", 126.35);
 ```
-En caso de error devuelve un array asociativo con dos keys: ResponseError (errores provenientes del banco) y DataSent (trama enviada para que pueda evaluar donde está el error).
+En caso de error devuelve un array asociativo con dos keys: **ResponseError** (errores provenientes del banco) y **DataSent** (trama enviada para que pueda evaluar donde está el error).
 
-En caso de éxito devuelve la respuesta tal como llega dle banco sin embargo si la transacción es aprovada, puede utilizar el método **$mercantil->IsApproved()** que devolverá true si se aprobó o false si se rechazó la transacción. También puede usar el método **$mercantil->getTransactionReferenceId()** para obtener la referencia o ID de la transacción para control bancario cuando se requiera.
+En caso de éxito devuelve un array asociativo con dos keys: **Response** (respuesta del banco) y **DataSent** (trama enviada). sin embargo si la transacción es aprobada, puede utilizar el método **$mercantil->IsApproved()** que devolverá true si se aprobó o false si se rechazó la transacción. También puede usar el método **$mercantil->getTransactionReferenceId()** para obtener la referencia o ID de la transacción para control bancario cuando se requiera.
+
+Todas las respuestas están en formato JSON por lo que tomar precauciones a la hora de manejarlas. Siempre se debe hacer un **json_decode($response,true)** si se desea manejar la respuesta como un array.
