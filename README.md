@@ -1,6 +1,5 @@
 # MercantilVE
 Este es el repositorio de la colección de clases de consumo de APIs del Banco Mercantil de Venezuela para pago con tarjetas nacionales e internacionales.
-
 ## instanciación
 ```
 $clientId: valor a ser enviado por header X-IBM-Client-Id (provisto por el banco)
@@ -11,13 +10,13 @@ $esProductivo: define el ambiente a ser utilizado por la API (0 si es ambiente d
 ```
 $mercantil = new Pago(string $clientId, string  $merchantId, string $claveCifrado, bool $esProductivo);
 ```
-## métodos
-
-payment(string $numeroTarjeta, string $fechaVencimientoTarjeta, string $cvvtarjeta, string $tipoTarjeta, string $cedulaCliente, string $direccionIpCliente, string $userAgentNavegador, string $idVenta, double $montoVenta, string $tipoCuenta = null): se utiliza para iniciar un proceso de pago.
-
 ## Datos POST del formulario de pago
-(Boton de pago y formulario se obtiene mediante el llamado del método **_buttonHtml(string $uriLogo, string $uriActionPost, double $monto)**)
+No es necesario crear un formulario de pago, ya que este paquete contiene un método que devuelve un formulario de pago.
 
+Boton de pago y formulario se obtiene mediante el llamado del método:
+```
+echo _buttonHtml(string $uriLogo, string $uriActionPost, double $monto)
+```
 Nota: parametro **$uriActionPost** se utiliza para indicar la URL del action del formulario, ese controlador debe existir en el servidor destino.
 ```
 $_POST['card-num']: número de tarjeta
@@ -31,3 +30,15 @@ $_POST['user-docid']: documento de identidad del titular (Si es venezolano debe 
 $_POST['user-email']: Email del usuario (no se envía mediante API de pago de Mercantil, puede ser usado para datos auxiliares a ser almacenados)
 $_POST['amount']: Monto del pago (decimales deben ser expresados con un punto (.) en lugar de coma (,))
 ```
+## métodos
+Para iniciar un proceso de pago:
+```
+$response = $mercantil->payment(string $numeroTarjeta, string $fechaVencimientoTarjeta, string $cvvtarjeta, string $tipoTarjeta, string $cedulaCliente, string $direccionIpCliente, string $userAgentNavegador, string $idVenta, double $montoVenta, string $tipoCuenta = null);
+```
+Ejemplo:
+```
+$response = $mercantil->payment("4141-4141-4141-4141", "12/2024", "369", "tdc", "V12345678", "192.168.1.1", "Chrome", "65987412", 126.35);
+```
+En caso de error devuelve un array asociativo con dos keys: ResponseError (errores provenientes del banco) y DataSent (trama enviada para que pueda evaluar donde está el error).
+
+En caso de éxito devuelve la respuesta tal como llega dle banco sin embargo si la transacción es aprovada, puede utilizar el método **$mercantil->IsApproved()** que devolverá true si se aprobó o false si se rechazó la transacción. También puede usar el método **$mercantil->getTransactionReferenceId()** para obtener la referencia o ID de la transacción para control bancario cuando se requiera.
