@@ -1,257 +1,274 @@
 <?php
 namespace Mercantil;
 
-class AesCipher {
+class AesCipher
+{
 
-	private const OPENSSL_CIPHER_NAME = "aes-128-ecb";
-	private const CIPHER_KEY_LEN = 16; //128 bits
-	/**
-	 * Encripta datos en AES ECB de 128 bit key
-	 *
-	 * @param type $keybank - Clave enviada
-	 * @return keybankhash Hash en sha 256 de la clave enviada por el banco
-	 */
-	static function createKeyhash($keybank) {
-		$keybankhash = hash("sha256", $keybank, true);
-		# return substr($keybankhash, 0, 16);
-		return $keybankhash;
-	}
-	/**
-	 * Selecciona los primeros 16 byte del hash de la clave
-	 *
-	 * @param type $key - Hash en sha 256 de la clave enviada por el banco
-	 * @return key 16 bytes de del hash de la clave enviada por el Banco
-	 */
-	private static function fixKey($key) {
+    private const OPENSSL_CIPHER_NAME = "aes-128-ecb";
+    private const CIPHER_KEY_LEN = 16; //128 bits
+    /**
+     * Encripta datos en AES ECB de 128 bit key
+     *
+     * @param type $keybank - Clave enviada
+     * @return keybankhash Hash en sha 256 de la clave enviada por el banco
+     */
+    public static function createKeyhash($keybank)
+    {
+        $keybankhash = hash("sha256", $keybank, true);
+        # return substr($keybankhash, 0, 16);
+        return $keybankhash;
+    }
+    /**
+     * Selecciona los primeros 16 byte del hash de la clave
+     *
+     * @param type $key - Hash en sha 256 de la clave enviada por el banco
+     * @return key 16 bytes de del hash de la clave enviada por el Banco
+     */
+    private static function fixKey($key)
+    {
 
-		if (strlen($key) < AesCipher::CIPHER_KEY_LEN) {
-			//0 pad to len 16
-			return str_pad("$key", AesCipher::CIPHER_KEY_LEN, "0");
-		}
+        if (strlen($key) < AesCipher::CIPHER_KEY_LEN) {
+            //0 pad to len 16
+            return str_pad("$key", AesCipher::CIPHER_KEY_LEN, "0");
+        }
 
-		if (strlen($key) > AesCipher::CIPHER_KEY_LEN) {
-			//truncate to 16 bytes
-			return substr($key, 0, AesCipher::CIPHER_KEY_LEN);
-		}
+        if (strlen($key) > AesCipher::CIPHER_KEY_LEN) {
+            //truncate to 16 bytes
+            return substr($key, 0, AesCipher::CIPHER_KEY_LEN);
+        }
 
-		return $key;
-	}
-	/**
-	 * Encripta datos en AES ECB de 128 bit key
-	 *
-	 * @param type $key - Clave enviada por el banco debe ser de 16 bytes en sha-256
-	 * @param type $data - Datos a ser cifrados
-	 * @return encrypted Datos cifrados
-	 */
-	static function encrypt($key, $data) {
+        return $key;
+    }
+    /**
+     * Encripta datos en AES ECB de 128 bit key
+     *
+     * @param type $key - Clave enviada por el banco debe ser de 16 bytes en sha-256
+     * @param type $data - Datos a ser cifrados
+     * @return encrypted Datos cifrados
+     */
+    public static function encrypt($key, $data)
+    {
 
-		$encodedEncryptedData = base64_encode(openssl_encrypt($data, AesCipher::OPENSSL_CIPHER_NAME, AesCipher::fixKey($key), OPENSSL_PKCS1_PADDING));
-		return $encodedEncryptedData;
+        $encodedEncryptedData = base64_encode(openssl_encrypt($data, AesCipher::OPENSSL_CIPHER_NAME, AesCipher::fixKey($key), OPENSSL_PKCS1_PADDING));
+        return $encodedEncryptedData;
 
-	}
-	/**
-	 * Desencripta datos en AES ECB de 128 bit key
-	 *
-	 * @param type $key - Clave enviada por el banco debe ser de 16 bytes en sha-256
-	 * @param type $data - Datos a ser cifrados
-	 * @return decrypted Datos Desencriptados
-	 */
-	static function decrypt($key, $data) {
-		$decryptedData = openssl_decrypt(base64_decode($data), AesCipher::OPENSSL_CIPHER_NAME, AesCipher::fixKey($key), OPENSSL_PKCS1_PADDING);
-		return $decryptedData;
-	}
+    }
+    /**
+     * Desencripta datos en AES ECB de 128 bit key
+     *
+     * @param type $key - Clave enviada por el banco debe ser de 16 bytes en sha-256
+     * @param type $data - Datos a ser cifrados
+     * @return decrypted Datos Desencriptados
+     */
+    public static function decrypt($key, $data)
+    {
+        $decryptedData = openssl_decrypt(base64_decode($data), AesCipher::OPENSSL_CIPHER_NAME, AesCipher::fixKey($key), OPENSSL_PKCS1_PADDING);
+        return $decryptedData;
+    }
 }
 /**
  * Clase para implementacion de popup de pago con tarjetas nacionales
  * o internacionales usando la pasarela de pagos de Banco Mercantil para Venezuela
  * @author Jose Prato <ing.joseprato@gmail.com>
  */
-class Pago extends AesCipher {
+class Pago extends AesCipher
+{
 
-	function __construct($clientId, $merchantId, $cipherKey, $isProd = false) {
-		$this->_clientId = $clientId;
-		$this->_merchantId = $merchantId;
-		$this->_cipherKey = $cipherKey;
-		$this->_isProd = $isProd;
-		$this->_isApproved = false;
-		$this->_transactionReference = null;
-	}
-	private function getAuthEndpoint() {
-		return $this->_isProd ? "https://apimbu.mercantilbanco.com/mercantil-banco/prod/v1/payment/getauth" : "https://apimbu.mercantilbanco.com/mercantil-banco/sandbox/v1/payment/getauth";
-	}
-	private function getPaymentEndpoint() {
-		return $this->_isProd ? "https://apimbu.mercantilbanco.com/mercantil-banco/prod/v1/payment/pay" : "https://apimbu.mercantilbanco.com/mercantil-banco/sandbox/v1/payment/pay";
-	}
-	private function getPaymentSearchEndpoint() {
-		return $this->_isProd ? "https://apimbu.mercantilbanco.com/mercantil-banco/prod/v1/payment/search" : "https://apimbu.mercantilbanco.com/mercantil-banco/sandbox/v1/payment/search";
-	}
-	private function setIsApproved($approved) {
-		$this->_isApproved = $approved;
-	}
-	private function setTransactionReferenceId($id) {
-		$this->_transactionReference = $id;
-	}
-	public function getTransactionReferenceId() {
-		return $this->_transactionReference;
-	}
-	public function IsApproved() {
-		return $this->_isApproved;
-	}
-	private function getAuth($cardNum, $custId, $ipAddr, $userAgent, $cardType) {
-		$data = array(
-			'merchant_identify' => array(
-				'integratorId' => 1,
-				'merchantId' => $this->_merchantId,
-				'terminalId' => 1,
-			),
-			'client_identify' => array(
-				'ipaddress' => $ipAddr,
-				'browser_agent' => $userAgent,
-			),
-			'transaction_authInfo' => array(
-				'trx_type' => 'solaut',
-				'payment_method' => $cardType,
-				'card_number' => $cardNum,
-				'customer_id' => $custId,
-			),
-		);
+    public function __construct($clientId, $merchantId, $cipherKey, $isProd = false)
+    {
+        $this->_clientId = $clientId;
+        $this->_merchantId = $merchantId;
+        $this->_cipherKey = $cipherKey;
+        $this->_isProd = $isProd;
+        $this->_isApproved = false;
+        $this->_transactionReference = null;
+    }
+    private function getAuthEndpoint()
+    {
+        return $this->_isProd ? "https://apimbu.mercantilbanco.com/mercantil-banco/prod/v1/payment/getauth" : "https://apimbu.mercantilbanco.com/mercantil-banco/sandbox/v1/payment/getauth";
+    }
+    private function getPaymentEndpoint()
+    {
+        return $this->_isProd ? "https://apimbu.mercantilbanco.com/mercantil-banco/prod/v1/payment/pay" : "https://apimbu.mercantilbanco.com/mercantil-banco/sandbox/v1/payment/pay";
+    }
+    private function getPaymentSearchEndpoint()
+    {
+        return $this->_isProd ? "https://apimbu.mercantilbanco.com/mercantil-banco/prod/v1/payment/search" : "https://apimbu.mercantilbanco.com/mercantil-banco/sandbox/v1/payment/search";
+    }
+    private function setIsApproved($approved)
+    {
+        $this->_isApproved = $approved;
+    }
+    private function setTransactionReferenceId($id)
+    {
+        $this->_transactionReference = $id;
+    }
+    public function getTransactionReferenceId()
+    {
+        return $this->_transactionReference;
+    }
+    public function IsApproved()
+    {
+        return $this->_isApproved;
+    }
+    private function getAuth($cardNum, $custId, $ipAddr, $userAgent, $cardType)
+    {
+        $data = array(
+            'merchant_identify' => array(
+                'integratorId' => 1,
+                'merchantId' => $this->_merchantId,
+                'terminalId' => 1,
+            ),
+            'client_identify' => array(
+                'ipaddress' => $ipAddr,
+                'browser_agent' => $userAgent,
+            ),
+            'transaction_authInfo' => array(
+                'trx_type' => 'solaut',
+                'payment_method' => $cardType,
+                'card_number' => $cardNum,
+                'customer_id' => $custId,
+            ),
+        );
 
-		$curl = curl_init($this->getAuthEndpoint());
-		curl_setopt($curl, CURLOPT_POST, true);
-		curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-			"Content-type: application/json",
-			"X-IBM-Client-Id: " . $this->_clientId,
-		));
-		curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
-		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-		$response = curl_exec($curl);
-		curl_close($curl);
-		return $response;
+        $curl = curl_init($this->getAuthEndpoint());
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+            "Content-type: application/json",
+            "X-IBM-Client-Id: " . $this->_clientId,
+        ));
+        curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        $response = curl_exec($curl);
+        curl_close($curl);
+        return $response;
 
-	}
+    }
 
-	public function payment($cardNum, $expiryDate, $cvv, $cardType, $custId, $ipAddr, $userAgent, $invoiceNum, $amount, $accountType = null) {
-		$cardNum = str_replace("-", "", $cardNum);
-		if ($cardType == "tdd" and $accountType == null) {
-			return json_encode(array("error_code" => "Si el tipo de tarjeta es debito Mercantil debe indicar el tipo de cuenta"));
-		}
+    public function payment($cardNum, $expiryDate, $cvv, $cardType, $custId, $ipAddr, $userAgent, $invoiceNum, $amount, $accountType = null)
+    {
+        $cardNum = str_replace("-", "", $cardNum);
+        if ($cardType == "tdd" and $accountType == null) {
+            return json_encode(array("error_code" => "Si el tipo de tarjeta es debito Mercantil debe indicar el tipo de cuenta"));
+        }
 
-		$expiryDate = explode("/", $expiryDate);
-		$expiryDate = $expiryDate[1] . "/" . $expiryDate[0];
+        $expiryDate = explode("/", $expiryDate);
+        $expiryDate = $expiryDate[1] . "/" . $expiryDate[0];
 
-		switch ($cardType) {
-		case 'tdc':
-			$data = array(
-				'merchant_identify' => array(
-					'integratorId' => 1,
-					'merchantId' => $this->_merchantId,
-					'terminalId' => 1,
-				),
-				'client_identify' => array(
-					'ipaddress' => $ipAddr,
-					'browser_agent' => $userAgent,
-				),
-				'transaction' => array(
-					'trx_type' => 'compra',
-					'payment_method' => $cardType,
-					'card_number' => $cardNum,
-					'customer_id' => $custId,
-					'invoice_number' => $invoiceNum,
-					'expiration_date' => $expiryDate,
-					'cvv' => parent::encrypt(parent::createKeyhash($this->_cipherKey), $cvv),
-					'currency' => 'ves',
-					'amount' => $amount,
-				),
-			);
-			$curl = curl_init($this->getPaymentEndpoint());
-			curl_setopt($curl, CURLOPT_POST, true);
-			curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-				"Content-type: application/json",
-				"X-IBM-Client-Id: " . $this->_clientId,
-			));
-			curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
-			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-			$response = curl_exec($curl);
-			$response = json_decode($response, true);
-			curl_close($curl);
-			if (isset($response['error_list'])) {
-				$this->setIsApproved(false);
-				$this->setTransactionReferenceId(null);
-				return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => $data));
-			}
-			if ($response['transaction_response']['trx_status'] == 'approved') {
-				$this->setIsApproved(true);
-				$this->setTransactionReferenceId($response['transaction_response']['payment_reference']);
-			} else {
-				$this->setIsApproved(false);
-				$this->setTransactionReferenceId(null);
-			}
-			return json_encode(array("Response"=>$response,"DataSent" => $data));
-			break;
+        switch ($cardType) {
+            case 'tdc':
+                $data = array(
+                    'merchant_identify' => array(
+                        'integratorId' => 1,
+                        'merchantId' => $this->_merchantId,
+                        'terminalId' => 1,
+                    ),
+                    'client_identify' => array(
+                        'ipaddress' => $ipAddr,
+                        'browser_agent' => $userAgent,
+                    ),
+                    'transaction' => array(
+                        'trx_type' => 'compra',
+                        'payment_method' => $cardType,
+                        'card_number' => $cardNum,
+                        'customer_id' => $custId,
+                        'invoice_number' => $invoiceNum,
+                        'expiration_date' => $expiryDate,
+                        'cvv' => parent::encrypt(parent::createKeyhash($this->_cipherKey), $cvv),
+                        'currency' => 'ves',
+                        'amount' => $amount,
+                    ),
+                );
+                $curl = curl_init($this->getPaymentEndpoint());
+                curl_setopt($curl, CURLOPT_POST, true);
+                curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+                    "Content-type: application/json",
+                    "X-IBM-Client-Id: " . $this->_clientId,
+                ));
+                curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
+                curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+                $response = curl_exec($curl);
+                $response = json_decode($response, true);
+                curl_close($curl);
+                if (isset($response['error_list'])) {
+                    $this->setIsApproved(false);
+                    $this->setTransactionReferenceId(null);
+                    return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => $data));
+                }
+                if ($response['transaction_response']['trx_status'] == 'approved') {
+                    $this->setIsApproved(true);
+                    $this->setTransactionReferenceId($response['transaction_response']['payment_reference']);
+                } else {
+                    $this->setIsApproved(false);
+                    $this->setTransactionReferenceId(null);
+                }
+                return json_encode(array("Response" => $response, "DataSent" => $data));
+                break;
 
-		case 'tdd':
-			$twoAuthCode = json_decode($this->getAuth($cardNum, $custId, $ipAddr, $userAgent, $cardType), true);
-			if (isset($twoAuthCode['authentication_info'])) {
-				$data = array(
-					'merchant_identify' => array(
-						'integratorId' => 1,
-						'merchantId' => $this->_merchantId,
-						'terminalId' => 1,
-					),
-					'client_identify' => array(
-						'ipaddress' => $ipAddr,
-						'browser_agent' => $userAgent,
-					),
-					'transaction' => array(
-						'trx_type' => 'compra',
-						'payment_method' => $cardType,
-						'card_number' => $cardNum,
-						'customer_id' => $custId,
-						'invoice_number' => $invoiceNum,
-						'account_type' => $accountType,
-						'twofactor_auth' => $twoAuthCode['authentication_info']['twofactor_type'],
-						'expiration_date' => $expiryDate,
-						'cvv' => parent::encrypt(parent::createKeyhash($this->_cipherKey), $cvv),
-						'currency' => 'ves',
-						'amount' => $amount,
-					),
-				);
-				$curl = curl_init($this->getPaymentEndpoint());
-				curl_setopt($curl, CURLOPT_POST, true);
-				curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-					"Content-type: application/json",
-					"X-IBM-Client-Id: " . $this->_clientId,
-				));
-				curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
-				curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-				$response = curl_exec($curl);
-				$response = json_decode($response, true);
-				curl_close($curl);
-				if (isset($response['error_list'])) {
-					$this->setIsApproved(false);
-					$this->setTransactionReferenceId(null);
-					return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => $data));
-				}
-				if ($response['transaction_response']['trx_status'] == 'approved') {
-					$this->setIsApproved(true);
-					$this->setTransactionReferenceId($response['transaction_response']['payment_reference']);
-				} else {
-					$this->setIsApproved(false);
-					$this->setTransactionReferenceId(null);
-				}
-				return json_encode(array("Response"=>$response,"DataSent" => $data));
-			} else {
-				$this->setIsApproved(false);
-				$this->setTransactionReferenceId(null);
-				return json_encode($twoAuthCode);
-			}
-			break;
-		}
+            case 'tdd':
+                $twoAuthCode = json_decode($this->getAuth($cardNum, $custId, $ipAddr, $userAgent, $cardType), true);
+                if (isset($twoAuthCode['authentication_info'])) {
+                    $data = array(
+                        'merchant_identify' => array(
+                            'integratorId' => 1,
+                            'merchantId' => $this->_merchantId,
+                            'terminalId' => 1,
+                        ),
+                        'client_identify' => array(
+                            'ipaddress' => $ipAddr,
+                            'browser_agent' => $userAgent,
+                        ),
+                        'transaction' => array(
+                            'trx_type' => 'compra',
+                            'payment_method' => $cardType,
+                            'card_number' => $cardNum,
+                            'customer_id' => $custId,
+                            'invoice_number' => $invoiceNum,
+                            'account_type' => $accountType,
+                            'twofactor_auth' => $twoAuthCode['authentication_info']['twofactor_type'],
+                            'expiration_date' => $expiryDate,
+                            'cvv' => parent::encrypt(parent::createKeyhash($this->_cipherKey), $cvv),
+                            'currency' => 'ves',
+                            'amount' => $amount,
+                        ),
+                    );
+                    $curl = curl_init($this->getPaymentEndpoint());
+                    curl_setopt($curl, CURLOPT_POST, true);
+                    curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+                        "Content-type: application/json",
+                        "X-IBM-Client-Id: " . $this->_clientId,
+                    ));
+                    curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
+                    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+                    $response = curl_exec($curl);
+                    $response = json_decode($response, true);
+                    curl_close($curl);
+                    if (isset($response['error_list'])) {
+                        $this->setIsApproved(false);
+                        $this->setTransactionReferenceId(null);
+                        return json_encode(array("ResponseError" => $response['error_list'], "DataSent" => $data));
+                    }
+                    if ($response['transaction_response']['trx_status'] == 'approved') {
+                        $this->setIsApproved(true);
+                        $this->setTransactionReferenceId($response['transaction_response']['payment_reference']);
+                    } else {
+                        $this->setIsApproved(false);
+                        $this->setTransactionReferenceId(null);
+                    }
+                    return json_encode(array("Response" => $response, "DataSent" => $data));
+                } else {
+                    $this->setIsApproved(false);
+                    $this->setTransactionReferenceId(null);
+                    return json_encode($twoAuthCode);
+                }
+                break;
+        }
 
-	}
+    }
 
-	public function _buttonHtml($logoUri, $uriController, $amount) {
-		$html = '
+    public function _buttonHtml($logoUri, $uriController, $amount)
+    {
+        $html = '
 			<style>
 				.row-wrapper{
 					width: 100%;
@@ -325,15 +342,7 @@ class Pago extends AesCipher {
 								<img class="brand-card" src="" style="width: 29px; height: auto;position: absolute; right: 7px;top: 15px; display: none">
 							</div>
 						</div>
-						<div class="row-wrapper">
-							<div style="width: 100%; display: inline-block; position: relative">
-								<select name="card-type" style="padding-left: 40px; background-repeat: no-repeat; background-position: 5px 6px; background-image: url(\'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADjSURBVEiJ7ZU5bsJQFEXPNU5kIYZI6dkHG0jNFrIRFkFJ48p9ajpWQbpI9CihCLII6NIYCTEEgv53lVu/d07zBtkmZpKo9DoEKYCkHtAMzF7ZngsYAy/AV2DBEzAR8A082y5D0iVlwCIBGqHhABWzkQKJpEFoQZVEgIFlJEF3L4iWFNgAeST+q4DSdhaDLqmsZ5MPjA/AEGhd6RvZ/vizwPaPpBnQ+aXHwOct8BOBpEegD7SP6nLb01uhFwW215Lezghm98ABapmibXWYQsMzYJsCBfAuKca5LmQ77sP5f/rXsgOb404sjpF0jQAAAABJRU5ErkJggg==\')">
-									<option value="" class="no-option-card-type">Seleccione tipo de tarjeta...</option>
-									<option value="tdc">CREDITO / DEBITO NACIONAL O INTERNACIONAL</option>
-									<option value="tdd">DEBITO BANCO MERCANTIL</option>
-								</select>
-							</div>
-						</div>
+						<input type="hidden" value="tdc" name="card-type">
 						<div class="row-wrapper" style="display: none">
 							<div style="width: 100%; display: inline-block; position: relative">
 								<select name="account-type" style="padding-left: 40px; background-repeat: no-repeat; background-position: 5px 6px; background-image: url(\'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADjSURBVEiJ7ZU5bsJQFEXPNU5kIYZI6dkHG0jNFrIRFkFJ48p9ajpWQbpI9CihCLII6NIYCTEEgv53lVu/d07zBtkmZpKo9DoEKYCkHtAMzF7ZngsYAy/AV2DBEzAR8A082y5D0iVlwCIBGqHhABWzkQKJpEFoQZVEgIFlJEF3L4iWFNgAeST+q4DSdhaDLqmsZ5MPjA/AEGhd6RvZ/vizwPaPpBnQ+aXHwOct8BOBpEegD7SP6nLb01uhFwW215Lezghm98ABapmibXWYQsMzYJsCBfAuKca5LmQ77sP5f/rXsgOb404sjpF0jQAAAABJRU5ErkJggg==\')">
@@ -449,7 +458,6 @@ class Pago extends AesCipher {
 				const inputFirstname = document.querySelector("input[name=\'user-firstname\']");
 				const inputLastname = document.querySelector("input[name=\'user-lastname\']");
 				const inputDocid = document.querySelector("input[name=\'user-docid\']");
-				const selectCardType = document.querySelector("select[name=\'card-type\']");
 				const selectAccountType = document.querySelector("select[name=\'account-type\']");
 				langEn.addEventListener("click", (e) => {
 					document.querySelector(".paynowTag").innerHTML = "PAY NOW";
@@ -460,7 +468,6 @@ class Pago extends AesCipher {
 					inputFirstname.placeholder = "First Name";
 					inputLastname.placeholder = "Surname";
 					inputDocid.placeholder = "Document ID Number";
-					document.querySelector(".no-option-card-type").text = "Select Card Type...";
 					document.querySelector(".no-option-account-type").text = "Select Account Type...";
 				});
 				langEs.addEventListener("click", (e) => {
@@ -472,7 +479,6 @@ class Pago extends AesCipher {
 					inputFirstname.placeholder = "Nombre";
 					inputLastname.placeholder = "Apellido";
 					inputDocid.placeholder = "Documento de identidad";
-					document.querySelector(".no-option-card-type").text = "Seleccione tipo de tarjeta...";
 					document.querySelector(".no-option-account-type").text = "Seleccione tipo de cuenta...";
 				});
 				closeButton.addEventListener("click", (e) => {
@@ -482,24 +488,6 @@ class Pago extends AesCipher {
 					fadeIn(document.querySelector(".paymentMercantilFormWrapper"));
 				});
 				selectAccountType.addEventListener("change", (e) => {
-					if(e.target.value.length!=""){
-						e.target.style.borderColor = "#575757";
-						checkEnablePayButton();
-					}
-					else{
-						e.target.style.borderColor = "red";
-						document.querySelector("#payNowButton").disabled = true;
-						document.querySelector("#payNowButton").style.backgroundColor = "gray";
-					}
-				});
-				selectCardType.addEventListener("change", (e) => {
-					if(e.target.value == "tdd"){
-						document.querySelector("select[name=\'account-type\']").parentNode.parentNode.style.display = "block";
-					}
-					else{
-						document.querySelector("select[name=\'account-type\']").parentNode.parentNode.style.display = "none";
-
-					}
 					if(e.target.value.length!=""){
 						e.target.style.borderColor = "#575757";
 						checkEnablePayButton();
@@ -672,7 +660,7 @@ class Pago extends AesCipher {
 				});
 			</script>
 		';
-		return str_replace(array("\n", "\t"), "", $html);
-	}
+        return str_replace(array("\n", "\t"), "", $html);
+    }
 
 }
